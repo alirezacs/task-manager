@@ -1,8 +1,13 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 export const makeId = () => crypto.randomUUID();
 
-export let teamMembers = [
+const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_FILE = path.join(DATA_DIR, "task-data.json");
+
+const seedTeam = [
   { id: "alex", name: "Alex Rivera", role: "Product" },
   { id: "mia", name: "Mia Wong", role: "Design" },
   { id: "sam", name: "Sam Patel", role: "Engineering" },
@@ -44,7 +49,43 @@ const seedTasks = [
   },
 ];
 
-export let tasks = [...seedTasks];
+const ensureDataFile = () => {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify({ tasks: seedTasks, teamMembers: seedTeam }, null, 2)
+    );
+  }
+};
+
+const loadData = () => {
+  ensureDataFile();
+  try {
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return {
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+      teamMembers: Array.isArray(parsed.teamMembers) ? parsed.teamMembers : [],
+    };
+  } catch (error) {
+    console.error("Failed to load data file, falling back to seeds", error);
+    return { tasks: seedTasks, teamMembers: seedTeam };
+  }
+};
+
+const initialData = loadData();
+
+export let tasks = initialData.tasks.length ? initialData.tasks : [...seedTasks];
+export let teamMembers = initialData.teamMembers.length ? initialData.teamMembers : [...seedTeam];
+
+export const persistData = () => {
+  ensureDataFile();
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ tasks, teamMembers }, null, 2));
+};
 
 export function findTaskIndex(taskId) {
   return tasks.findIndex((task) => task.id === taskId);

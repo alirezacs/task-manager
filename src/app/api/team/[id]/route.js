@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findTeamIndex, teamMembers } from "../../tasks/data";
+import { findTeamIndex, teamMembers, persistData } from "../../tasks/data";
 
 export async function PUT(request, { params }) {
   const { id } = params;
@@ -25,5 +25,6 @@ export async function PUT(request, { params }) {
   };
 
   teamMembers[index] = updated;
+  persistData();
   return NextResponse.json({ member: updated });
 }

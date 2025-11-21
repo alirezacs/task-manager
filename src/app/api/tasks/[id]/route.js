@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findTaskIndex, tasks } from "../data";
+import { findTaskIndex, tasks, persistData } from "../data";
 
 export async function PUT(request, { params }) {
   const { id } = params;
@@ -19,6 +19,7 @@ export async function PUT(request, { params }) {
   };
 
   tasks[index] = updated;
+  persistData();
   return NextResponse.json({ task: updated });
 }
 
@@ -35,6 +36,7 @@ export async function PATCH(request, { params }) {
   const status = payload.status ?? current.status;
 
   tasks[index] = { ...current, status };
+  persistData();
   return NextResponse.json({ task: tasks[index] });
 }
 
@@ -47,5 +49,6 @@ export async function DELETE(_, { params }) {
   }
 
   const removed = tasks.splice(index, 1)[0];
+  persistData();
   return NextResponse.json({ task: removed });
 }
