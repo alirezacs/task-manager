@@ -2,7 +2,7 @@ import crypto from "crypto";
 
 export const makeId = () => crypto.randomUUID();
 
-export let teamMembers = [
+export const teamMembers = [
   { id: "alex", name: "Alex Rivera", role: "Product" },
   { id: "mia", name: "Mia Wong", role: "Design" },
   { id: "sam", name: "Sam Patel", role: "Engineering" },
@@ -34,8 +34,4 @@ export let tasks = [...seedTasks];
 
 export function findTaskIndex(taskId) {
   return tasks.findIndex((task) => task.id === taskId);
-}
-
-export function findTeamIndex(teamId) {
-  return teamMembers.findIndex((member) => member.id === teamId);
 }

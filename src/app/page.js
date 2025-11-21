@@ -16,12 +16,6 @@ const statusLabels = {
   cancelled: "Cancelled",
 };
 
-const slugify = (value) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-
 const pill = (label) => (
   <span className="rounded-full bg-white/60 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-white/40">
     {label}
@@ -38,11 +32,6 @@ export default function Home() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
-  const [teammateId, setTeammateId] = useState("");
-  const [teammateName, setTeammateName] = useState("");
-  const [teammateRole, setTeammateRole] = useState("");
-  const [editingTeammateId, setEditingTeammateId] = useState(null);
-  const [teamLoading, setTeamLoading] = useState(false);
 
   useEffect(() => {
     async function bootstrap() {
@@ -55,25 +44,12 @@ export default function Home() {
     bootstrap();
   }, []);
 
-  useEffect(() => {
-    if (!editingTeammateId && teammateName && !teammateId) {
-      setTeammateId(slugify(teammateName));
-    }
-  }, [editingTeammateId, teammateId, teammateName]);
-
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setDueDate("");
     setAssignees([]);
     setEditingTaskId(null);
-  };
-
-  const resetTeamForm = () => {
-    setTeammateId("");
-    setTeammateName("");
-    setTeammateRole("");
-    setEditingTeammateId(null);
   };
 
   const selectedLabel = useMemo(() => {
@@ -91,38 +67,6 @@ export default function Home() {
         : [...current, id]
     );
   };
-
-  async function saveTeammate(event) {
-    event.preventDefault();
-    if (!teammateName.trim()) return;
-    if (!editingTeammateId && !teammateId.trim()) return;
-    setTeamLoading(true);
-
-    const payload = { name: teammateName.trim(), role: teammateRole.trim() };
-
-    try {
-      if (editingTeammateId) {
-        const res = await fetch(`/api/team/${editingTeammateId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        setTeam((prev) => prev.map((member) => (member.id === data.member.id ? data.member : member)));
-      } else {
-        const res = await fetch("/api/team", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: teammateId.trim(), ...payload }),
-        });
-        const data = await res.json();
-        setTeam((prev) => [...prev, data.member]);
-      }
-      resetTeamForm();
-    } finally {
-      setTeamLoading(false);
-    }
-  }
 
   async function saveTask(event) {
     event.preventDefault();
@@ -186,13 +130,6 @@ export default function Home() {
     setEditingTaskId(task.id);
   }
 
-  function startTeamEdit(member) {
-    setTeammateId(member.id);
-    setTeammateName(member.name);
-    setTeammateRole(member.role);
-    setEditingTeammateId(member.id);
-  }
-
   const groupedTasks = useMemo(() => {
     return tasks.reduce(
       (acc, task) => {
@@ -204,41 +141,37 @@ export default function Home() {
   }, [tasks]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 px-4 pb-16 pt-10 text-slate-900 sm:px-6 lg:px-10">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 px-4 py-10 text-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <header className="flex flex-col gap-4 rounded-3xl bg-white/70 p-6 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Task manager</p>
             <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">Plan, assign, and finish fast</h1>
-            <p className="max-w-2xl text-sm text-slate-600">
-              Capture tasks quickly, keep ownership clear, and track status from any device. A refreshed layout keeps controls thumb-friendly on mobile and spacious on desktop.
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              Capture tasks quickly, keep ownership clear, and track status from any device.
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 shadow-sm ring-1 ring-slate-200">
             {pill("Create")}
             {pill("Assign")}
             {pill("Complete")}
           </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          <form
-            onSubmit={saveTask}
-            className="lg:col-span-2 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <form onSubmit={saveTask} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Quick task</p>
                 <h2 className="text-xl font-semibold text-slate-900">
                   {editingTaskId ? "Update task" : "Create a task"}
                 </h2>
-                <p className="text-sm text-slate-600">Designed for single-hand use on phones and clear scanning on widescreens.</p>
               </div>
               {editingTaskId && (
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="self-start text-sm font-medium text-slate-500 underline underline-offset-4"
+                  className="text-sm font-medium text-slate-500 underline underline-offset-4"
                 >
                   Cancel edit
                 </button>
@@ -253,7 +186,7 @@ export default function Home() {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ex: Draft onboarding flow"
                   required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
                 />
               </label>
               <label className="flex flex-col gap-2">
@@ -262,7 +195,7 @@ export default function Home() {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
                 />
               </label>
               <label className="md:col-span-2 flex flex-col gap-2">
@@ -272,7 +205,7 @@ export default function Home() {
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   placeholder="Context, requirements, or quick acceptance criteria."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
                 />
               </label>
             </div>
@@ -311,138 +244,50 @@ export default function Home() {
               >
                 {loading ? "Saving..." : editingTaskId ? "Save changes" : "Create task"}
               </button>
-              <span className="text-xs text-slate-500">Tasks save instantly and stay finger-friendly on mobile.</span>
+              <span className="text-xs text-slate-500">
+                Tasks save instantly so your team can stay aligned on mobile or desktop.
+              </span>
             </div>
           </form>
 
-          <div className="grid gap-6 lg:col-span-1">
-            <div className="rounded-3xl bg-slate-900 text-white shadow-lg">
-              <div className="flex flex-col gap-3 border-b border-white/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Pulse</p>
-                  <h3 className="text-lg font-semibold">Live status</h3>
-                </div>
-                <div className="flex gap-2 overflow-x-auto py-1">
-                  {Object.entries(groupedTasks).map(([key, list]) => (
-                    <div key={key} className="rounded-full bg-white/10 px-3 py-1 text-xs whitespace-nowrap">
-                      {statusLabels[key]} <span className="font-semibold">{list.length}</span>
-                    </div>
-                  ))}
-                </div>
+          <div className="rounded-3xl bg-slate-900 text-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Pulse</p>
+                <h3 className="text-lg font-semibold">Live status</h3>
               </div>
-              <div className="space-y-4 px-6 py-5">
-                <p className="text-sm text-slate-300">
-                  A quick snapshot of where work sits today. Tap a status to shift momentum.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {Object.entries(groupedTasks).map(([key, list]) => (
-                    <div key={key} className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-white">{statusLabels[key]}</span>
-                        <span className="text-xs text-slate-400">{list.length} task(s)</span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {list.slice(0, 3).map((task) => (
-                          <span
-                            key={task.id}
-                            className="rounded-full bg-white/10 px-3 py-1 text-xs text-white"
-                          >
-                            {task.title}
-                          </span>
-                        ))}
-                        {!list.length && (
-                          <span className="text-xs text-slate-500">Nothing here yet</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex gap-2">
+                {Object.entries(groupedTasks).map(([key, list]) => (
+                  <div key={key} className="rounded-full bg-white/10 px-3 py-1 text-xs">
+                    {statusLabels[key]} <span className="font-semibold">{list.length}</span>
+                  </div>
+                ))}
               </div>
             </div>
-
-            <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Team</p>
-                  <h3 className="text-lg font-semibold text-slate-900">Roster & access</h3>
-                  <p className="text-sm text-slate-600">Add new teammates or update their roles without leaving the page.</p>
-                </div>
-                {editingTeammateId && (
-                  <button
-                    type="button"
-                    onClick={resetTeamForm}
-                    className="text-xs font-semibold text-slate-500 underline underline-offset-4"
-                  >
-                    Cancel edit
-                  </button>
-                )}
-              </div>
-
-              <form onSubmit={saveTeammate} className="mt-4 grid gap-3">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-700">Full name</span>
-                  <input
-                    value={teammateName}
-                    onChange={(e) => setTeammateName(e.target.value)}
-                    placeholder="Ex: Priya Singh"
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-700">Role</span>
-                  <input
-                    value={teammateRole}
-                    onChange={(e) => setTeammateRole(e.target.value)}
-                    placeholder="Ex: Engineering"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-slate-700">Teammate ID (used for assignments)</span>
-                  <input
-                    value={teammateId}
-                    onChange={(e) => setTeammateId(e.target.value)}
-                    placeholder="priya-singh"
-                    required={!editingTeammateId}
-                    disabled={Boolean(editingTeammateId)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-900 shadow-inner transition focus:border-blue-400 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50"
-                  />
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={teamLoading}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 transition hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {teamLoading ? "Saving..." : editingTeammateId ? "Save teammate" : "Add teammate"}
-                  </button>
-                  <p className="text-xs text-slate-500">IDs stay stable so existing tasks keep their assignees.</p>
-                </div>
-              </form>
-
-              <div className="mt-5 divide-y divide-slate-100">
-                {team.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">{member.name}</span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {member.role || "Teammate"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">ID: {member.id}</p>
+            <div className="space-y-4 px-6 py-5">
+              <p className="text-sm text-slate-300">
+                A quick snapshot of where work sits today. Tap a status to shift momentum.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Object.entries(groupedTasks).map(([key, list]) => (
+                  <div key={key} className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-white">{statusLabels[key]}</span>
+                      <span className="text-xs text-slate-400">{list.length} task(s)</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => startTeamEdit(member)}
-                      className="self-start rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
-                    >
-                      Edit
-                    </button>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {list.slice(0, 3).map((task) => (
+                        <span
+                          key={task.id}
+                          className="rounded-full bg-white/10 px-3 py-1 text-xs text-white"
+                        >
+                          {task.title}
+                        </span>
+                      ))}
+                      {!list.length && (
+                        <span className="text-xs text-slate-500">Nothing here yet</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -463,7 +308,7 @@ export default function Home() {
             {tasks.map((task) => (
               <article
                 key={task.id}
-                className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:flex-row sm:items-start sm:justify-between"
+                className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex flex-col gap-2 sm:max-w-2xl">
                   <div className="flex flex-wrap items-center gap-2">
