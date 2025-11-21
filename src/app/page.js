@@ -16,6 +16,45 @@ const statusLabels = {
   cancelled: "Cancelled",
 };
 
+const filterOptions = [
+  { key: "all", label: "All" },
+  { key: "today", label: "Today" },
+  { key: "tomorrow", label: "Tomorrow" },
+  { key: "overdue", label: "Overdue" },
+];
+
+const getDateBoundaries = () => {
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const startOfDayAfter = new Date(startOfTomorrow);
+  startOfDayAfter.setDate(startOfDayAfter.getDate() + 1);
+  return { startOfToday, startOfTomorrow, startOfDayAfter };
+};
+
+const matchesDueFilter = (task, filter, bounds) => {
+  if (filter === "all") return true;
+  if (!task.dueDate) return false;
+  const date = new Date(task.dueDate);
+  if (Number.isNaN(date.getTime())) return false;
+  const taskDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (filter === "today") return taskDay >= bounds.startOfToday && taskDay < bounds.startOfTomorrow;
+  if (filter === "tomorrow") return taskDay >= bounds.startOfTomorrow && taskDay < bounds.startOfDayAfter;
+  if (filter === "overdue") return taskDay < bounds.startOfToday;
+  return true;
+};
+
+const sortByDueDate = (a, b) => {
+  if (!a.dueDate && !b.dueDate) return 0;
+  if (!a.dueDate) return 1;
+  if (!b.dueDate) return -1;
+  const first = new Date(a.dueDate).getTime();
+  const second = new Date(b.dueDate).getTime();
+  return first - second;
+};
+
 const slugify = (value) =>
   value
     .toLowerCase()
@@ -206,28 +245,24 @@ export default function Home() {
     );
   }, [tasks]);
 
+  const filterCounts = useMemo(() => {
+    const bounds = getDateBoundaries();
+    return filterOptions.reduce((acc, option) => {
+      acc[option.key] = tasks.filter((task) => matchesDueFilter(task, option.key, bounds)).length;
+      return acc;
+    }, {});
+  }, [tasks]);
+
   const filteredTasks = useMemo(() => {
-    if (dueFilter === "all") return tasks;
-
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-    const startOfDayAfter = new Date(startOfTomorrow);
-    startOfDayAfter.setDate(startOfDayAfter.getDate() + 1);
-
-    return tasks.filter((task) => {
-      if (!task.dueDate) return false;
-      const date = new Date(task.dueDate);
-      if (Number.isNaN(date.getTime())) return false;
-      const taskDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-      if (dueFilter === "today") return taskDay >= startOfToday && taskDay < startOfTomorrow;
-      if (dueFilter === "tomorrow") return taskDay >= startOfTomorrow && taskDay < startOfDayAfter;
-      if (dueFilter === "overdue") return taskDay < startOfToday;
-      return true;
-    });
+    const bounds = getDateBoundaries();
+    return tasks.filter((task) => matchesDueFilter(task, dueFilter, bounds));
   }, [dueFilter, tasks]);
+
+  const displayedTasks = useMemo(() => {
+    const sorted = [...filteredTasks];
+    sorted.sort(sortByDueDate);
+    return sorted;
+  }, [filteredTasks]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 px-4 pb-16 pt-10 text-slate-900 sm:px-6 lg:px-10">
@@ -502,26 +537,23 @@ export default function Home() {
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
               <span className="text-sm text-slate-500">Tap to update status or edit details.</span>
               <div className="flex flex-wrap gap-2">
-                {["all", "today", "tomorrow", "overdue"].map((option) => {
-                  const active = dueFilter === option;
-                  const labels = {
-                    all: "All", 
-                    today: "Today", 
-                    tomorrow: "Tomorrow", 
-                    overdue: "Overdue",
-                  };
+                {filterOptions.map((option) => {
+                  const active = dueFilter === option.key;
                   return (
                     <button
-                      key={option}
+                      key={option.key}
                       type="button"
-                      onClick={() => setDueFilter(option)}
+                      onClick={() => setDueFilter(option.key)}
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                         active
                           ? "border-blue-500 bg-blue-50 text-blue-800 shadow-sm"
                           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                       }`}
                     >
-                      {labels[option]}
+                      <span>{option.label}</span>
+                      <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">
+                        {filterCounts[option.key] ?? 0}
+                      </span>
                     </button>
                   );
                 })}
@@ -530,7 +562,7 @@ export default function Home() {
           </div>
 
           <div className="mt-5 grid gap-4">
-            {filteredTasks.map((task) => (
+            {displayedTasks.map((task) => (
               <article
                 key={task.id}
                 className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:flex-row sm:items-start sm:justify-between"
@@ -610,7 +642,7 @@ export default function Home() {
               </article>
             ))}
 
-            {!filteredTasks.length && (
+            {!displayedTasks.length && (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-sm text-slate-500">
                 No tasks match this view. Adjust filters or create a new task to get started.
               </div>

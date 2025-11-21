@@ -10,6 +10,12 @@ export let teamMembers = [
   { id: "ivan", name: "Ivan Duarte", role: "Data" },
 ];
 
+const toDateString = (offsetDays) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+};
+
 const seedTasks = [
   {
     id: makeId(),
@@ -18,7 +24,7 @@ const seedTasks = [
       "Draft a responsive card layout for the new task manager and align colors with the brand palette.",
     status: "in-progress",
     assignees: ["alex", "mia"],
-    dueDate: "2024-11-08",
+    dueDate: toDateString(0),
   },
   {
     id: makeId(),
@@ -26,7 +32,15 @@ const seedTasks = [
     description: "Create CRUD endpoints for tasks so the UI can stay fully reactive.",
     status: "todo",
     assignees: ["sam"],
-    dueDate: "2024-11-12",
+    dueDate: toDateString(1),
+  },
+  {
+    id: makeId(),
+    title: "Review acceptance criteria",
+    description: "Clarify success measures with QA and product so the team can ship confidently.",
+    status: "todo",
+    assignees: ["zoe"],
+    dueDate: toDateString(-1),
   },
 ];
 
